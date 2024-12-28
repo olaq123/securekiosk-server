@@ -2,6 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 const cors = require('cors');
+const { MongoClient, ServerApiVersion } = require('mongodb');
 
 // Import routes
 const adBlockRoutes = require('./routes/adblock');
@@ -9,8 +10,25 @@ const adBlockRoutes = require('./routes/adblock');
 const app = express();
 const PORT = process.env.PORT || 8080;
 
-// Mongoose connection string from environment variable
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/securekiosk';
+// MongoDB Connection String
+const MONGODB_URI = "mongodb+srv://Securekiosk:KTacUzOcbKx8J4y5@cluster0.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
+
+// MongoDB Client Configuration
+const mongoClient = new MongoClient(MONGODB_URI, {
+    serverApi: {
+        version: ServerApiVersion.v1,
+        strict: true,
+        deprecationErrors: true,
+    }
+});
+
+// Mongoose Connection
+mongoose.connect(MONGODB_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+})
+.then(() => console.log('Mongoose connected successfully'))
+.catch(err => console.error('Mongoose connection error:', err));
 
 // CORS configuration
 const corsOptions = {
@@ -34,13 +52,20 @@ app.use((req, res, next) => {
     next();
 });
 
-// MongoDB Connection
-mongoose.connect(MONGODB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-})
-.then(() => console.log('MongoDB connected successfully'))
-.catch(err => console.error('MongoDB connection error:', err));
+// Connect MongoDB Client
+async function connectMongoClient() {
+    try {
+        await mongoClient.connect();
+        console.log("MongoDB Client connected successfully");
+        
+        // Optional: Ping the deployment
+        await mongoClient.db("admin").command({ ping: 1 });
+        console.log("Pinged MongoDB deployment");
+    } catch (error) {
+        console.error("Failed to connect to MongoDB:", error);
+        process.exit(1);
+    }
+}
 
 // Routes
 app.use('/api/adblock', adBlockRoutes);
@@ -72,9 +97,12 @@ app.use((err, req, res, next) => {
 });
 
 // Start server
-const server = app.listen(PORT, () => {
+const server = app.listen(PORT, async () => {
     console.log(`Server running on port ${PORT}`);
     console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    
+    // Connect MongoDB Client
+    await connectMongoClient();
 });
 
-module.exports = { app, server };
+module.exports = { app, server, mongoClient };
