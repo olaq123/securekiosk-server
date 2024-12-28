@@ -1,44 +1,27 @@
 const express = require('express');
 const mongoose = require('mongoose');
-const bodyParser = require('body-parser');
-const cors = require('cors');
 const { MongoClient, ServerApiVersion } = require('mongodb');
+const cors = require('cors');
+const bodyParser = require('body-parser');
+const dotenv = require('dotenv');
 
-// Import routes
-const adBlockRoutes = require('./routes/adblock');
+// Load environment variables
+dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 8080;
 
-// MongoDB Connection String
-const MONGODB_URI = "mongodb+srv://Securekiosk:KTacUzOcbKx8J4y5@cluster0.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
-
-// MongoDB Client Configuration
-const mongoClient = new MongoClient(MONGODB_URI, {
-    serverApi: {
-        version: ServerApiVersion.v1,
-        strict: true,
-        deprecationErrors: true,
-    }
-});
-
-// Mongoose Connection
-mongoose.connect(MONGODB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-})
-.then(() => console.log('Mongoose connected successfully'))
-.catch(err => console.error('Mongoose connection error:', err));
-
-// CORS configuration
+// CORS Configuration
 const corsOptions = {
     origin: [
         'http://localhost:8080', 
-        'https://securekiosk-server.onrender.com',
-        'https://securekiosk.app'  // Add your production domain
+        'https://securekiosk-server.onrender.com', 
+        'capacitor://localhost', 
+        'ionic://localhost'
     ],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true
 };
 
 // Middleware
@@ -46,63 +29,129 @@ app.use(cors(corsOptions));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// Logging middleware
-app.use((req, res, next) => {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
-    next();
-});
+// MongoDB Connection Options
+const mongoOptions = {
+    serverApi: {
+        version: ServerApiVersion.v1,
+        strict: true,
+        deprecationErrors: true,
+    },
+    connectTimeoutMS: 15000,
+    socketTimeoutMS: 60000,
+    retryWrites: true,
+    maxPoolSize: 10
+};
 
-// Connect MongoDB Client
-async function connectMongoClient() {
+// Enhanced Logging Function
+function logMongoDBError(context, error) {
+    console.error(`[MongoDB] ${context} Error:`, {
+        name: error.name,
+        message: error.message,
+        code: error.code,
+        syscall: error.syscall,
+        hostname: error.hostname,
+        stack: error.stack
+    });
+}
+
+// Mongoose Connection Function
+async function connectMongoose() {
     try {
-        await mongoClient.connect();
-        console.log("MongoDB Client connected successfully");
+        console.log('[MongoDB] Attempting Mongoose connection...');
         
-        // Optional: Ping the deployment
-        await mongoClient.db("admin").command({ ping: 1 });
-        console.log("Pinged MongoDB deployment");
+        // Validate MongoDB URI
+        if (!process.env.MONGODB_URI) {
+            throw new Error('MONGODB_URI is not defined in environment variables');
+        }
+
+        // Attempt Mongoose Connection
+        mongoose.set('strictQuery', false);
+        await mongoose.connect(process.env.MONGODB_URI, {
+            ...mongoOptions,
+            useNewUrlParser: false,
+            useUnifiedTopology: false
+        });
+        
+        console.log('[MongoDB] Mongoose connected successfully');
+        
+        // Test a simple database operation
+        const collections = await mongoose.connection.db.listCollections().toArray();
+        console.log('Available Collections:', collections.map(c => c.name));
     } catch (error) {
-        console.error("Failed to connect to MongoDB:", error);
+        logMongoDBError('Mongoose Connection', error);
         process.exit(1);
     }
 }
 
+// MongoDB Client Connection Function
+async function connectMongoClient() {
+    try {
+        console.log('[MongoDB] Attempting MongoDB Client connection...');
+        
+        // Validate MongoDB URI
+        if (!process.env.MONGODB_URI) {
+            throw new Error('MONGODB_URI is not defined in environment variables');
+        }
+        
+        const client = new MongoClient(process.env.MONGODB_URI, mongoOptions);
+        
+        // Connect the client to the server
+        await client.connect();
+        
+        // Send a ping to confirm a successful connection
+        await client.db("admin").command({ ping: 1 });
+        console.log('[MongoDB] Pinged deployment. Successfully connected to MongoDB!');
+        
+        return client;
+    } catch (error) {
+        logMongoDBError('MongoDB Client Connection', error);
+        throw error;
+    }
+}
+
 // Routes
-app.use('/api/adblock', adBlockRoutes);
+app.use('/api/adblock', require('./routes/adblock'));
 
-// Basic health check
-app.get('/', (req, res) => {
-    res.json({ 
-        status: 'Server is running', 
-        timestamp: new Date().toISOString(),
-        environment: process.env.NODE_ENV || 'development'
-    });
-});
-
-// 404 handler
-app.use((req, res, next) => {
-    res.status(404).json({
-        message: 'Route not found',
-        path: req.path
-    });
-});
-
-// Error handling middleware
+// Global Error Handler
 app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).json({ 
-        message: 'Internal server error', 
-        error: process.env.NODE_ENV === 'production' ? 'An error occurred' : err.message 
+    console.error('[Server Error]:', err);
+    res.status(500).json({
+        message: 'Internal Server Error',
+        error: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
     });
 });
 
-// Start server
-const server = app.listen(PORT, async () => {
-    console.log(`Server running on port ${PORT}`);
-    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-    
-    // Connect MongoDB Client
-    await connectMongoClient();
-});
+// Server Startup
+async function startServer() {
+    try {
+        // Connect to MongoDB
+        await connectMongoose();
+        const mongoClient = await connectMongoClient();
 
-module.exports = { app, server, mongoClient };
+        // Start Express Server
+        const server = app.listen(PORT, () => {
+            console.log(`[Server] Running on port ${PORT}`);
+            console.log(`[Environment] ${process.env.NODE_ENV || 'development'}`);
+        });
+
+        // Graceful Shutdown
+        process.on('SIGINT', async () => {
+            console.log('[Server] Shutting down gracefully...');
+            await mongoose.connection.close();
+            await mongoClient.close();
+            server.close(() => {
+                console.log('[Server] Closed');
+                process.exit(0);
+            });
+        });
+
+    } catch (error) {
+        console.error('[Server] Startup failed:', error);
+        process.exit(1);
+    }
+}
+
+// Start the server
+startServer();
+
+module.exports = { app };
