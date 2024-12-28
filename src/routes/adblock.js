@@ -25,26 +25,36 @@ router.use((req, res, next) => {
 
 // Comprehensive Default Ad Blocking Rules
 const DEFAULT_RULES = [
-    // Ad Networks
-    { trigger: '.*doubleclick\\.net.*', action: 'block', category: 'ads', description: 'Block Google DoubleClick ads' },
-    { trigger: '.*googlesyndication\\.com.*', action: 'block', category: 'ads', description: 'Block Google Ads' },
-    { trigger: '.*adnxs\\.com.*', action: 'block', category: 'ads', description: 'Block AppNexus ads' },
-    { trigger: '.*criteo\\.net.*', action: 'block', category: 'ads', description: 'Block Criteo ads' },
+    // Comprehensive Ad Networks
+    { trigger: '.*adtago\\.s3\\.amazonaws\\.com.*', action: 'block', category: 'ads', description: 'Block Amazon Ad Tracking' },
+    { trigger: '.*pagead2\\.googlesyndication\\.com.*', action: 'block', category: 'ads', description: 'Block Google Ad Syndication' },
+    { trigger: '.*adservice\\.google\\.com.*', action: 'block', category: 'ads', description: 'Block Google Ad Service' },
+    { trigger: '.*ad\\.doubleclick\\.net.*', action: 'block', category: 'ads', description: 'Block DoubleClick Ads' },
     
-    // Tracking Domains
+    // Tracking and Analytics
     { trigger: '.*google-analytics\\.com.*', action: 'block', category: 'tracking', description: 'Block Google Analytics' },
-    { trigger: '.*doubleclick\\.net.*', action: 'block', category: 'tracking', description: 'Block DoubleClick tracking' },
-    { trigger: '.*facebook\\.net.*', action: 'block', category: 'tracking', description: 'Block Facebook tracking' },
+    { trigger: '.*pixel\\.facebook\\.com.*', action: 'block', category: 'tracking', description: 'Block Facebook Pixel' },
+    { trigger: '.*hotjar\\.com.*', action: 'block', category: 'tracking', description: 'Block Hotjar Tracking' },
     
-    // Malware and Suspicious Domains
-    { trigger: '.*tracking\\..*', action: 'block', category: 'malware', description: 'Block generic tracking domains' },
-    { trigger: '.*analytics\\..*', action: 'block', category: 'tracking', description: 'Block generic analytics domains' },
+    // Social Media Trackers
+    { trigger: '.*ads\\.twitter\\.com.*', action: 'block', category: 'tracking', description: 'Block Twitter Ads' },
+    { trigger: '.*ads\\.linkedin\\.com.*', action: 'block', category: 'tracking', description: 'Block LinkedIn Ads' },
+    { trigger: '.*ads\\.pinterest\\.com.*', action: 'block', category: 'tracking', description: 'Block Pinterest Ads' },
     
-    // Specific Ad Domains
-    { trigger: '.*ads\\..*', action: 'block', category: 'ads', description: 'Block common ad domains' },
-    { trigger: '.*banner\\..*', action: 'block', category: 'ads', description: 'Block banner ad domains' },
+    // OEM and Device Trackers
+    { trigger: '.*data\\.mistat\\.xiaomi\\.com.*', action: 'block', category: 'tracking', description: 'Block Xiaomi Tracking' },
+    { trigger: '.*metrics\\.icloud\\.com.*', action: 'block', category: 'tracking', description: 'Block Apple Metrics' },
     
-    // Adult Content and Inappropriate Ads
+    // Error Tracking and Monitoring
+    { trigger: '.*sentry\\.io.*', action: 'block', category: 'tracking', description: 'Block Sentry Error Tracking' },
+    { trigger: '.*bugsnag\\.com.*', action: 'block', category: 'tracking', description: 'Block Bugsnag Error Tracking' },
+    
+    // Comprehensive Domain Patterns
+    { trigger: '.*\\.ads\\..*', action: 'block', category: 'ads', description: 'Block generic ad domains' },
+    { trigger: '.*\\.tracking\\..*', action: 'block', category: 'tracking', description: 'Block generic tracking domains' },
+    { trigger: '.*\\.analytics\\..*', action: 'block', category: 'tracking', description: 'Block generic analytics domains' },
+    
+    // Adult and Inappropriate Content
     { trigger: '.*adult.*', action: 'block', category: 'adult', description: 'Block adult content domains' }
 ];
 
