@@ -58,18 +58,20 @@ function logMongoDBError(context, error) {
 async function connectMongoose() {
     try {
         console.log('[MongoDB] Attempting Mongoose connection...');
-        
-        // Validate MongoDB URI
-        if (!process.env.MONGODB_URI) {
-            throw new Error('MONGODB_URI is not defined in environment variables');
-        }
+        console.log('[MongoDB] Connection URI:', process.env.MONGODB_URI);
 
         // Attempt Mongoose Connection
         mongoose.set('strictQuery', false);
         await mongoose.connect(process.env.MONGODB_URI, {
-            ...mongoOptions,
-            useNewUrlParser: false,
-            useUnifiedTopology: false
+            serverApi: {
+                version: ServerApiVersion.v1,
+                strict: true,
+                deprecationErrors: true,
+            },
+            connectTimeoutMS: 15000,
+            socketTimeoutMS: 60000,
+            retryWrites: true,
+            maxPoolSize: 10
         });
         
         console.log('[MongoDB] Mongoose connected successfully');
