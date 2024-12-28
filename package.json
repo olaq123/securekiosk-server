@@ -9,8 +9,7 @@
     "start": "node -r dotenv/config src/server.js",
     "dev": "nodemon -r dotenv/config src/server.js",
     "test:db": "node test_mongodb_connection.js",
-    "test:adblock": "node test_adblock_api.js",
-    "postinstall": "rm package-lock.json"
+    "test:adblock": "node test_adblock_api.js"
   },
   "engines": {
     "node": ">=16.0.0"
