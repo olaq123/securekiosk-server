@@ -2,36 +2,50 @@ const express = require('express');
 const router = express.Router();
 const AdBlockRule = require('../models/AdBlockRule');
 const cors = require('cors');
+const geoip = require('geoip-lite');
 
 // Enable CORS
 router.use(cors());
 
-// Logging middleware for ad block routes
+// Logging middleware for ad block routes with device and geolocation info
 router.use((req, res, next) => {
-    console.log(`[AdBlock] ${new Date().toISOString()} - ${req.method} ${req.path}`);
+    const clientIP = req.ip || req.connection.remoteAddress;
+    const geo = geoip.lookup(clientIP);
+    
+    console.log(`[AdBlock] Connection Details:
+    - Timestamp: ${new Date().toISOString()}
+    - Method: ${req.method}
+    - Path: ${req.path}
+    - Client IP: ${clientIP}
+    - Geolocation: ${geo ? `${geo.city}, ${geo.country}` : 'Unknown'}
+    - User Agent: ${req.get('User-Agent') || 'Not provided'}
+    `);
     next();
 });
 
-// Default set of ad blocking rules
+// Comprehensive Default Ad Blocking Rules
 const DEFAULT_RULES = [
-    {
-        trigger: '.*ads\\..*',
-        action: 'block',
-        category: 'ads',
-        description: 'Block common ad domains'
-    },
-    {
-        trigger: '.*tracking\\..*',
-        action: 'block', 
-        category: 'tracking',
-        description: 'Block tracking domains'
-    },
-    {
-        trigger: '.*analytics\\..*',
-        action: 'block',
-        category: 'tracking',
-        description: 'Block analytics domains'
-    }
+    // Ad Networks
+    { trigger: '.*doubleclick\\.net.*', action: 'block', category: 'ads', description: 'Block Google DoubleClick ads' },
+    { trigger: '.*googlesyndication\\.com.*', action: 'block', category: 'ads', description: 'Block Google Ads' },
+    { trigger: '.*adnxs\\.com.*', action: 'block', category: 'ads', description: 'Block AppNexus ads' },
+    { trigger: '.*criteo\\.net.*', action: 'block', category: 'ads', description: 'Block Criteo ads' },
+    
+    // Tracking Domains
+    { trigger: '.*google-analytics\\.com.*', action: 'block', category: 'tracking', description: 'Block Google Analytics' },
+    { trigger: '.*doubleclick\\.net.*', action: 'block', category: 'tracking', description: 'Block DoubleClick tracking' },
+    { trigger: '.*facebook\\.net.*', action: 'block', category: 'tracking', description: 'Block Facebook tracking' },
+    
+    // Malware and Suspicious Domains
+    { trigger: '.*tracking\\..*', action: 'block', category: 'malware', description: 'Block generic tracking domains' },
+    { trigger: '.*analytics\\..*', action: 'block', category: 'tracking', description: 'Block generic analytics domains' },
+    
+    // Specific Ad Domains
+    { trigger: '.*ads\\..*', action: 'block', category: 'ads', description: 'Block common ad domains' },
+    { trigger: '.*banner\\..*', action: 'block', category: 'ads', description: 'Block banner ad domains' },
+    
+    // Adult Content and Inappropriate Ads
+    { trigger: '.*adult.*', action: 'block', category: 'adult', description: 'Block adult content domains' }
 ];
 
 // Get ad blocking rules with improved error handling and logging
@@ -70,6 +84,7 @@ router.get('/rules', async (req, res) => {
             id: rule._id?.toString() || rule.id || require('crypto').randomBytes(16).toString('hex')
         }));
 
+        console.log(`[AdBlock] Sending ${rules.length} ad blocking rules`);
         res.json(rules);
     } catch (error) {
         console.error('[AdBlock] Error fetching rules:', error);

@@ -8,6 +8,8 @@
   "scripts": {
     "start": "node -r dotenv/config src/server.js",
     "dev": "nodemon -r dotenv/config src/server.js",
+    "test:db": "node test_mongodb_connection.js",
+    "test:adblock": "node test_adblock_api.js",
     "postinstall": "rm package-lock.json"
   },
   "engines": {
@@ -20,12 +22,15 @@
     "enterprise"
   ],
   "dependencies": {
-    "express": "^4.18.2",
+    "axios": "^1.6.3",
     "body-parser": "^1.20.2",
-    "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.0.3",
     "cors": "^2.8.5",
-    "dotenv": "^16.3.1"
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "geoip-lite": "^1.4.10",
+    "jsonwebtoken": "^9.0.2",
+    "mongodb": "^6.12.0",
+    "mongoose": "^8.9.2"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"
